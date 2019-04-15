@@ -59,3 +59,8 @@ typings/
 
 # next.js build output
 .next
+
+# Certificates and keys PEM
+*.pem
+*.pem.crt
+*.pem.key
