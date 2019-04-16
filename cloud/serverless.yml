@@ -1,0 +1,87 @@
+service: aws-iot-example-ff
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  region: eu-west-1
+  variableSyntax: "\\${{([ ~:a-zA-Z0-9._\\'\",\\-\\/\\(\\)]+?)}}"
+
+custom:
+  # Rule for reading the state messages and include the clientId in the package as deviceId
+  stateRuleSQL: "SELECT *, topic(3) as deviceId, FROM 'sensors/temperature/+/state'"
+
+resources:
+  Resources:
+    # Table for holding state data
+    StateTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: StateTable
+        SSESpecification:
+          SSEEnabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        AttributeDefinitions:
+          - AttributeName: deviceId
+            AttributeType: S
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: deviceId
+            KeyType: HASH
+          - AttributeName: id
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+    # IAM Role & Policy to allow AWS IoT Service to write in our DynamoDB Table
+    StateRole:
+      Type: "AWS::IAM::Role"
+      #DependsOn: StateTable
+      Properties:
+        RoleName: state-iot-write-dynamo-ff
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Service:
+                  - iot.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: "statedynamodbwrite"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "dynamodb:PutItem"
+                    - "dynamodb:BatchWriteItem"
+                  Resource:
+                    Fn::GetAtt:
+                      - "StateTable"
+                      - "Arn"
+    # Rule to forward state messages into the DynamoDB
+    StateRule:
+      Type: "AWS::IoT::TopicRule"
+      #DependsOn: StateRole
+      Properties:
+        RuleName: state_to_dynamo_ff
+        TopicRulePayload:
+          RuleDisabled: false
+          Sql: ${{self:custom.stateRuleSQL}}
+          AwsIotSqlVersion: "2016-03-23"
+          Actions:
+            -
+              DynamoDBv2:
+                RoleArn:
+                  Fn::GetAtt:
+                    - "StateRole"
+                    - "Arn"
+                PutItem:
+                  TableName: StateTable
+
+#  Outputs:
+#     NewOutput:
+#       Description: "Description for the output"
+#       Value: "Some output value"
