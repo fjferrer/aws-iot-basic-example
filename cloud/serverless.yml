@@ -6,10 +6,36 @@ provider:
   stage: dev
   region: eu-west-1
   variableSyntax: "\\${{([ ~:a-zA-Z0-9._\\'\",\\-\\/\\(\\)]+?)}}"
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+       - "dynamodb:Scan"
+       - "dynamodb:Query"
+      Resource:
+        Fn::GetAtt:
+          - "StateTable"
+          - "Arn"
+  environment:
+   REGION: ${{opt:stage, self:provider.region}}
+   TABLE: ${{self:custom.stateTable}}
 
 custom:
   # Rule for reading the state messages and include the clientId in the package as deviceId
   stateRuleSQL: "SELECT *, topic(3) as deviceId, FROM 'sensors/temperature/+/state'"
+  # DynamoDB Table name
+  stateTable: StateTable
+
+
+functions:
+  getData:
+    handler: handler.getData
+    events:
+      - http:
+          path: data
+          method: get
+          cors: true
+      # - iot:
+      #     sql: "SELECT * FROM 'some_topic'"
 
 resources:
   Resources:
@@ -17,7 +43,7 @@ resources:
     StateTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: StateTable
+        TableName: ${{self:custom.stateTable}}
         SSESpecification:
           SSEEnabled: true
         PointInTimeRecoverySpecification:
@@ -36,7 +62,6 @@ resources:
     # IAM Role & Policy to allow AWS IoT Service to write in our DynamoDB Table
     StateRole:
       Type: "AWS::IAM::Role"
-      #DependsOn: StateTable
       Properties:
         RoleName: state-iot-write-dynamo-ff
         AssumeRolePolicyDocument:
@@ -64,7 +89,6 @@ resources:
     # Rule to forward state messages into the DynamoDB
     StateRule:
       Type: "AWS::IoT::TopicRule"
-      #DependsOn: StateRole
       Properties:
         RuleName: state_to_dynamo_ff
         TopicRulePayload:
@@ -80,8 +104,3 @@ resources:
                     - "Arn"
                 PutItem:
                   TableName: StateTable
-
-#  Outputs:
-#     NewOutput:
-#       Description: "Description for the output"
-#       Value: "Some output value"
