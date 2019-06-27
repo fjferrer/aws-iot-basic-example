@@ -23,13 +23,13 @@ key_file=$CLIENT_ID-private.pem.key
 crt_file=$CLIENT_ID-certificate.pem.crt
 
 echo " - Creating and retrieving a new certificate with client id: $CLIENT_ID"
-certificate_id=$(aws iot create-keys-and-certificate --set-as-active --certificate-pem-outfile $crt_file --private-key-outfile $key_file --region $REGION --output text | head -n1 | awk '{print $2}')
-echo "   * Certificate Id: $certificate_id"
-echo $certificate_id >> cert_list
+certificate_arn=$(aws iot create-keys-and-certificate --set-as-active --certificate-pem-outfile $crt_file --private-key-outfile $key_file --region $REGION --output text | head -n1 | awk '{print $1}')
+echo "   * Certificate Id: ${certificate_arn:(-64)}"
+echo $certificate_arn >> cert_list
 
 echo -n " - Retrieving AWS IOT Endpoint: "
 export HOST=$(aws iot describe-endpoint  --endpoint-type iot:Data-ATS --output text --region $REGION)
-echo $HOST
+echo $HOST | sed -e "s,^\(.*\)\(.iot.$REGION.amazonaws.com\),**************\2,"
 
 export ROOT=AmazonRootCA1.pem
 echo " - Retrieving AWS Root CA: $ROOT"
