@@ -3,12 +3,12 @@ const awsIot = require('aws-iot-device-sdk');
 const uuid = require('uuid');
 
 // MQTT Broker specific configuration
-const region = process.env.REGION || 'eu-west-1';
+const region = process.env.REGION || process.env.AWS_REGION || 'eu-west-1';
 const host = process.env.HOST || new Error('MQTT Endpoint not defined'); // MQTT Endpoint
 const caPath = process.env.ROOT || 'AmazonRootCA1.pem';
 
 // Device specific configuration
-const clientId = process.env.CLIENTID || new Error('Client Id not defined');
+const clientId = process.env.CLIENT_ID || new Error('Client Id not defined');
 const keyPath = `${clientId}-private.pem.key`;
 const certPath = `${clientId}-certificate.pem.crt`;
 const stateMessageFrequency = 5000; // in milliseconds
@@ -27,7 +27,15 @@ const options = {
   region,
   debug: false
 };
-const device = awsIot.device(options);
+
+let device;
+try {
+    device = awsIot.device(options);
+} catch(e) {
+    console.log(`[ERROR] ${e.message}`);
+    console.log(`This seems not like a file path nor the the key file does not exist: ${keyPath}`);
+    process.exit(1);
+}
 
 
 // Connect the device
