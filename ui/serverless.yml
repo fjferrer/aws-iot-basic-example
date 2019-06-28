@@ -1,0 +1,15 @@
+service: simple-ui
+
+plugins:
+  - serverless-finch
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  region: eu-west-1
+
+custom:
+  client:
+    # The contents of this bucket will be removed!
+    bucketName: ${env:BUCKET_NAME}
+    distributionFolder: dist
