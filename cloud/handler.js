@@ -36,8 +36,8 @@ module.exports.getData = async (event, context) => {
   // Order events regarding their timestamp
   Object.values(dataPoints).forEach(e => e.sort((a, b) => a.timestamp - b.timestamp));
 
-  // Limit to only last 15 data points
-  Object.values(dataPoints).forEach(e => e.splice(0, e.length - 15));
+  // Limit to only last 10 data points
+  Object.values(dataPoints).forEach(e => e.splice(0, e.length - 10));
   
   // Send response back
   const response = {
